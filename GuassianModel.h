@@ -5,8 +5,11 @@
 #ifndef GRABCUT_GUASSIANMODEL_H
 #define GRABCUT_GUASSIANMODEL_H
 #include <vector>
+#include "opencv2/core.hpp"
+#include "opencv2/core/mat.hpp"
 
 using namespace std;
+using namespace cv;
 
 /*
  * 三维高斯分布模型
@@ -14,6 +17,7 @@ using namespace std;
  *
  * v_mean: 高斯模型的均值向量，v_mean.size() = 3
  * covariance: 协方差，size = [3,3]
+ * tool: 工具类
  *
  * * * * * * * public  * * * * * * * * * * * * *
  *
@@ -28,12 +32,12 @@ class GaussianModel {
 
 private:
     vector<float> v_mean;
-    vector<vector<float>> covariance;
+    Mat covariance;
 
 public:
     explicit GaussianModel(vector<vector<unsigned char>> pixels);
     vector<float> get_mean();
-    vector<vector<float>> get_covariance();
+    Mat get_covariance();
     void update(vector<vector<unsigned char>> pixels);
     float get_prob(vector<unsigned char> pixel);
 

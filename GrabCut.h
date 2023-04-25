@@ -52,7 +52,7 @@ private:
 
 public:
     GrabCut(Mat img, vector<int> pos, int k);
-    float Dn(unsigned char alpha, unsigned char k, vector<float> bgr);
+    // float Dn(unsigned char alpha, unsigned char k, vector<float> bgr);
     void step1();
     void step2();
     void step3();

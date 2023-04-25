@@ -7,6 +7,9 @@
 float util::det(vector<vector<float>> determinant) {
 
     float sum = 0, n = determinant.size();
+    if (n == 2) {
+        return determinant[0][0] * determinant[1][1] - determinant[0][1] * determinant[1][0];
+    }
     for (int k = 0; k < n; k ++){
         vector<vector<float>> b;
         for (int i = 1; i < n; i ++) {
