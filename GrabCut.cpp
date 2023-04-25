@@ -7,11 +7,11 @@
 
 typedef Graph<int, int, int> GraphType;
 
-GrabCut::GrabCut(Mat img, vector<int> pos, int k) {
+void GrabCut::init(Mat img, Rect rect, int k) {
 
     time_t time1 = time(0);
     char* dt1 = ctime(&time1);
-    cout << "GrabCut starts initial...\t" << dt1 << endl;
+    cout << "GrabCut starts init...\t" << dt1 << endl;
 
     this->img = img;
 
@@ -25,10 +25,10 @@ GrabCut::GrabCut(Mat img, vector<int> pos, int k) {
     this->k_matrix = vector<vector<unsigned char>>(rows, vector<unsigned char>(cols, 0));
 
     // 根据矩形坐标初始化alpha矩阵
-    this->x1 = pos[0];
-    this->y1 = pos[1];
-    this->x2 = pos[2];
-    this->y2 = pos[3];
+    this->x1 = rect.tl().x;
+    this->y1 = rect.tl().y;
+    this->x2 = rect.br().x;
+    this->y2 = rect.br().y;
     for (int i = this->x1; i <= this->x2; i ++) {
         for (int j = this->y1; j <= this->y2; j ++) {
             this->alpha_matrix[j][i] = 1;
@@ -110,7 +110,7 @@ GrabCut::GrabCut(Mat img, vector<int> pos, int k) {
 
     time_t time2 = time(0);
     char* dt2 = ctime(&time2);
-    cout << "GrabCut finish initial.\t" << dt2 << endl;
+    cout << "GrabCut finish init.\t" << dt2 << endl;
 
 }
 
@@ -204,7 +204,14 @@ void GrabCut::step3() {
 //            float x = -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]}));
 //            float y = -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]}));
             if (i < y1 || i > y2 || j < x1 || j > x2) {
-                g->add_tweights(id, 0, 20);
+                g->add_tweights(id, 0, 9 * gamma);
+            }
+            // alpha=2为用户设置的背景
+            else if (alpha_matrix[i][j] == 2) {
+                g->add_tweights(id, 0, 9 * gamma);
+            }
+            else if (alpha_matrix[i][j] == 3) {
+                g->add_tweights(id, 9 * gamma, 0);
             }
             else {
                 g->add_tweights(id,
@@ -234,6 +241,9 @@ void GrabCut::step3() {
 
     for (int i = y1; i <= y2; i ++) {
         for (int j = x1; j <= x2; j ++) {
+            if (alpha_matrix[i][j] == 2 || alpha_matrix[i][j] == 3) {
+                continue;
+            }
             int id = i * img.cols + j;
             if (g->what_segment(id) == GraphType::SINK) {
                 alpha_matrix[i][j] = 0;
@@ -250,13 +260,11 @@ void GrabCut::step3() {
 
 }
 
-void GrabCut::iterative_process(int max_iteration) {
+void GrabCut::iterative_process() {
 
-    for (int i = 0; i < max_iteration; i ++) {
         step1();
         step2();
         step3();
-    }
 }
 
 Mat GrabCut::get_mask() {
@@ -272,5 +280,29 @@ Mat GrabCut::get_mask() {
         Mat sample(1, alpha_matrix[0].size(), DataType<uchar>::type, alpha_matrix[i].data());
         temp.push_back(sample);
     }
+    mask = temp;
+    for (int i = x1; i <= x2; i ++) {
+        for (int j = y1; j <= y2; j ++) {
+            if (alpha_matrix[j][i] == 2) {
+                temp.at<uchar>(i, j) = 0;
+            }
+            else if (alpha_matrix[j][i] == 3) {
+                temp.at<uchar>(i, j) = 1;
+            }
+        }
+    }
     return temp;
+}
+
+void GrabCut::revise(vector<cv::Point> background_pixels, vector<cv::Point> foreground_pixels) {
+
+    for (int i = 0; i < background_pixels.size(); i ++) {
+        auto pixel = background_pixels[i];
+        alpha_matrix[pixel.y][pixel.x] = 2;
+    }
+    for (int i = 0; i < foreground_pixels.size(); i ++) {
+        auto pixel = foreground_pixels[i];
+        alpha_matrix[pixel.y][pixel.x] = 3;
+    }
+    step3();
 }

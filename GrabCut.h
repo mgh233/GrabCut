@@ -29,11 +29,12 @@ using namespace cv;
  *
  * * * * * * * * * * * public * * * * * * * * * * *
  *
- * GrabCut(Mat, vector<int>): 使用img和矩形位置初始化
+ * init(Mat, vector<int>): 使用img和矩形位置初始化
  * Dn(uc, uc, vector<uc>): Dn函数的计算
  * step1~3(): 迭代过程中的第一到第三步
  * iterative_process(int): 迭代过程
  * get_mask(): 获取掩码
+ * revise(vector<>, vector<>): 根据用户反馈结果重新执行step3
  *
  */
 class GrabCut {
@@ -51,12 +52,13 @@ private:
     vector<vector<float>> left, leftup, up, rightup;
 
 public:
-    GrabCut(Mat img, vector<int> pos, int k);
+    void init(Mat img, Rect rect, int k);
     // float Dn(unsigned char alpha, unsigned char k, vector<float> bgr);
     void step1();
     void step2();
     void step3();
-    void iterative_process(int max_iteration);
+    void iterative_process();
+    void revise(vector<Point> background_pixels, vector<Point> foreground_pixels);
     Mat get_mask();
 
 };
