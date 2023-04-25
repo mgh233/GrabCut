@@ -43,7 +43,7 @@ private:
     vector<GMM> GMMs;
     Mat img;
     int x1, y1, x2, y2;
-    vector<vector<unsigned char>> alpha_matrix;
+    // vector<vector<unsigned char>> alpha_matrix;
     vector<vector<unsigned char>> k_matrix;
     Mat mask;
     util tool;

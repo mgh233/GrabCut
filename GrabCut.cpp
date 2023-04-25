@@ -21,7 +21,7 @@ void GrabCut::init(Mat img, Rect rect, int k) {
     // 初始化alpha矩阵和k矩阵
     int cols = img.cols;
     int rows = img.rows;
-    this->alpha_matrix = vector<vector<unsigned char>>(rows, vector<unsigned char>(cols, 0));
+    // this->alpha_matrix = vector<vector<unsigned char>>(rows, vector<unsigned char>(cols, 0));
     this->k_matrix = vector<vector<unsigned char>>(rows, vector<unsigned char>(cols, 0));
 
     // 根据矩形坐标初始化alpha矩阵
@@ -31,7 +31,7 @@ void GrabCut::init(Mat img, Rect rect, int k) {
     this->y2 = rect.br().y;
     for (int i = this->x1; i <= this->x2; i ++) {
         for (int j = this->y1; j <= this->y2; j ++) {
-            this->alpha_matrix[j][i] = 1;
+            this->mask.at<uchar>(i, j)= 1;
         }
     }
 
@@ -41,7 +41,7 @@ void GrabCut::init(Mat img, Rect rect, int k) {
     for (int i = 0; i < rows; i ++) {
         for (int j = 0; j < cols; j ++) {
             Vec3b pixel = img.at<Vec3b>(j, i);
-            if (this->alpha_matrix[i][j] == 0) {
+            if (this->mask.at<uchar>(j, i) == 0) {
                 backgroud_pixels.push_back({pixel[0], pixel[1], pixel[2]});
             }
             else {
@@ -142,7 +142,7 @@ void GrabCut::step1() {
     for (int i = 0; i < rows; i ++) {
         for (int j = 0; j < cols; j ++) {
             Vec3b pixel = this->img.at<Vec3b>(j, i);
-            this->k_matrix[i][j] = GMMs[alpha_matrix[i][j]].get_most_prob({pixel[0], pixel[1], pixel[2]});
+            this->k_matrix[i][j] = GMMs[mask.at<uchar>(j, i) % 2].get_most_prob({pixel[0], pixel[1], pixel[2]});
         }
     }
 
@@ -163,7 +163,7 @@ void GrabCut::step2() {
     for (int i = 0; i < img.rows; i ++) {
         for (int j = 0; j < img.cols; j ++) {
             auto pixel = img.at<Vec3b>(j, i);
-            auto alpha = this->alpha_matrix[i][j];
+            auto alpha = this->mask.at<uchar>(j, i) % 2;
             auto k = this->k_matrix[i][j];
             if (alpha == 0) {
                 background_pixels[k].push_back({pixel[0], pixel[1], pixel[2]});
@@ -207,10 +207,10 @@ void GrabCut::step3() {
                 g->add_tweights(id, 0, 9 * gamma);
             }
             // alpha=2为用户设置的背景
-            else if (alpha_matrix[i][j] == 2) {
+            else if (mask.at<uchar>(j ,i) == 2) {
                 g->add_tweights(id, 0, 9 * gamma);
             }
-            else if (alpha_matrix[i][j] == 3) {
+            else if (mask.at<uchar>(j, i) == 3) {
                 g->add_tweights(id, 9 * gamma, 0);
             }
             else {
@@ -241,15 +241,15 @@ void GrabCut::step3() {
 
     for (int i = y1; i <= y2; i ++) {
         for (int j = x1; j <= x2; j ++) {
-            if (alpha_matrix[i][j] == 2 || alpha_matrix[i][j] == 3) {
+            if (mask.at<uchar>(j, i) == 2 || mask.at<uchar>(j, i) == 3) {
                 continue;
             }
             int id = i * img.cols + j;
             if (g->what_segment(id) == GraphType::SINK) {
-                alpha_matrix[i][j] = 0;
+                mask.at<uchar>(j, i) = 0;
             }
             else {
-                alpha_matrix[i][j] = 1;
+                mask.at<uchar>(j, i) = 1;
             }
         }
     }
@@ -275,20 +275,26 @@ Mat GrabCut::get_mask() {
 //                mask.at<uchar>(i, j) = 255;
 //        }
 //    }
-    Mat temp(0, alpha_matrix[0].size(), DataType<uchar>::type);
-    for (int i = 0; i < alpha_matrix.size(); i ++) {
-        Mat sample(1, alpha_matrix[0].size(), DataType<uchar>::type, alpha_matrix[i].data());
-        temp.push_back(sample);
-    }
-    mask = temp;
-    for (int i = x1; i <= x2; i ++) {
-        for (int j = y1; j <= y2; j ++) {
-            if (alpha_matrix[j][i] == 2) {
-                temp.at<uchar>(i, j) = 0;
-            }
-            else if (alpha_matrix[j][i] == 3) {
-                temp.at<uchar>(i, j) = 1;
-            }
+//    Mat temp(0, alpha_matrix[0].size(), DataType<uchar>::type);
+//    for (int i = 0; i < alpha_matrix.size(); i ++) {
+//        Mat sample(1, alpha_matrix[0].size(), DataType<uchar>::type, alpha_matrix[i].data());
+//        temp.push_back(sample);
+//    }
+//    mask = temp;
+//    for (int i = x1; i <= x2; i ++) {
+//        for (int j = y1; j <= y2; j ++) {
+//            if (alpha_matrix[j][i] == 2) {
+//                temp.at<uchar>(i, j) = 0;
+//            }
+//            else if (alpha_matrix[j][i] == 3) {
+//                temp.at<uchar>(i, j) = 1;
+//            }
+//        }
+//    }
+    Mat temp = mask.clone();
+    for (int i = 0; i < temp.cols; i ++) {
+        for (int j = 0; j < temp.rows; j ++) {
+            temp.at<uchar>(i, j) = mask.at<uchar>(i, j) % 2;
         }
     }
     return temp;
@@ -298,11 +304,11 @@ void GrabCut::revise(vector<cv::Point> background_pixels, vector<cv::Point> fore
 
     for (int i = 0; i < background_pixels.size(); i ++) {
         auto pixel = background_pixels[i];
-        alpha_matrix[pixel.y][pixel.x] = 2;
+        mask.at<uchar>(pixel.x, pixel.y) = 2;
     }
     for (int i = 0; i < foreground_pixels.size(); i ++) {
         auto pixel = foreground_pixels[i];
-        alpha_matrix[pixel.y][pixel.x] = 3;
+        mask.at<uchar>(pixel.x, pixel.y) = 3;
     }
     step3();
 }
