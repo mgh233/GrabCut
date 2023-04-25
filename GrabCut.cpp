@@ -60,7 +60,6 @@ GrabCut::GrabCut(Mat img, vector<int> pos, int k) {
 
     // 计算beta
     float sum = 0;
-    int cnt = 0;
     for (int i = 0; i < img.rows; i ++) {
         for (int j = 0; j < img.cols; j ++) {
             auto now_pixel = img.at<Vec3b>(j, i);
@@ -71,7 +70,6 @@ GrabCut::GrabCut(Mat img, vector<int> pos, int k) {
                         + pow(now_pixel[1] - left_pixel[1], 2)
                         + pow(now_pixel[2] - left_pixel[2], 2);
                 sum += left[i][j];
-                cnt ++;
             }
             // 与左上
             if (j - 1 >= 0 && i - 1 >= 0) {
@@ -80,7 +78,6 @@ GrabCut::GrabCut(Mat img, vector<int> pos, int k) {
                        + pow(now_pixel[1] - leftup_pixel[1], 2)
                        + pow(now_pixel[2] - leftup_pixel[2], 2);
                 sum += leftup[i][j];
-                cnt ++;
             }
             // 与上方
             if (i - 1 >= 0) {
@@ -89,7 +86,6 @@ GrabCut::GrabCut(Mat img, vector<int> pos, int k) {
                        + pow(now_pixel[1] - up_pixel[1], 2)
                        + pow(now_pixel[2] - up_pixel[2], 2);
                 sum += up[i][j];
-                cnt ++;
             }
             // 与右上
             if (j + 1 < img.cols && i - 1 >= 0) {
@@ -98,11 +94,19 @@ GrabCut::GrabCut(Mat img, vector<int> pos, int k) {
                        + pow(now_pixel[1] - rightup_pixel[1], 2)
                        + pow(now_pixel[2] - rightup_pixel[2], 2);
                 sum += rightup[i][j];
-                cnt ++;
             }
         }
     }
-    this->beta = 1.0 / (2 * sum / cnt);
+    this->beta = 1.0 / (2 * sum / (4 * img.cols * img.rows - 3 * img.cols - 3 * img.rows + 2));
+
+    for (int i = 0; i < img.rows; i ++) {
+        for (int j = 0; j < img.cols; j ++) {
+            left[i][j] = gamma * exp(-beta * left[i][j]);
+            up[i][j] = gamma * exp(-beta * up[i][j]);
+            leftup[i][j] = gamma * exp(-beta * leftup[i][j]);
+            rightup[i][j] = gamma * exp(-beta * rightup[i][j]);
+        }
+    }
 
     time_t time2 = time(0);
     char* dt2 = ctime(&time2);
@@ -190,37 +194,39 @@ void GrabCut::step3() {
 
     int sum = (this->x2 - this->x1 + 1) * (this->y2 - this->y1 + 1);
     GraphType *g = new GraphType(sum, 8 * sum);
+    int id = 0;
     for (int i = 0; i < img.rows; i ++) {
         for (int j = 0; j < img.cols; j ++) {
             // 向图中加入节点并设置t-link
             g->add_node();
             Vec3b pixel = img.at<Vec3b>(j, i);
             // int id = (i - x1) * (y2 - y1 + 1) + j - y1;
-            int id = i * img.cols + j;
-            // float x = -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]}));
-            // float y = -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]}));
-            g->add_tweights(id,
-                            -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]})),
-                            -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]})));
+//            float x = -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]}));
+//            float y = -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]}));
+            if (i < y1 || i > y2 || j < x1 || j > x2) {
+                g->add_tweights(id, 0, 20);
+            }
+            else {
+                g->add_tweights(id,
+                                -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]})),
+                                -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]})));
+            }
 
             // 设置n-link
-            if (left[i][j] > 0) {
-                float x = gamma * exp(-beta * left[i][j]);
-                g->add_edge(id, id - 1, gamma * exp(-beta * left[i][j]),
-                            gamma * exp(-beta * left[i][j]));
+            if (j - 1 >= 0) {
+//              float x = gamma * exp(-beta * left[i][j]);
+                g->add_edge(id, id - 1, left[i][j],left[i][j]);
             }
-            if (leftup[i][j] > 0) {
-                g->add_edge(id, id - img.cols - 1, gamma * exp(-beta * leftup[i][j]),
-                            gamma * exp(-beta * leftup[i][j]));
+            if (j - 1 >= 0 && i - 1 >= 0) {
+                g->add_edge(id, id - img.cols - 1, leftup[i][j],leftup[i][j]);
             }
-            if (up[i][j] > 0) {
-                g->add_edge(id, id - img.cols, gamma * exp(-beta * up[i][j]),
-                            gamma * exp(-beta * up[i][j]));
+            if (i - 1 >= 0) {
+                g->add_edge(id, id - img.cols, up[i][j],up[i][j]);
             }
-            if (rightup[i][j] > 0) {
-                g->add_edge(id, id - img.cols + 1, gamma * exp(-beta * rightup[i][j]),
-                            gamma * exp(-beta * rightup[i][j]));
+            if (j + 1 < img.cols && i - 1 >= 0) {
+                g->add_edge(id, id - img.cols + 1, rightup[i][j],rightup[i][j]);
             }
+            id ++;
         }
     }
 
@@ -229,7 +235,7 @@ void GrabCut::step3() {
     for (int i = y1; i <= y2; i ++) {
         for (int j = x1; j <= x2; j ++) {
             int id = i * img.cols + j;
-            if (g->what_segment(id) == GraphType::SOURCE) {
+            if (g->what_segment(id) == GraphType::SINK) {
                 alpha_matrix[i][j] = 0;
             }
             else {

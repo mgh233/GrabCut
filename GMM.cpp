@@ -24,7 +24,10 @@ GMM::GMM(int k, vector<vector<unsigned char>> pixels) {
     }
     // 通过欧式距离聚类
     unsigned char flags[pixels.size()];
-    for (int time = 0; time < 5; time ++) {
+    double sum = 0;
+    int times = 0;
+    do {
+        sum = 0;
         for (int i = 0; i < pixels.size(); i ++) {
             int center = 0;
             int min = 1e9;
@@ -37,6 +40,7 @@ GMM::GMM(int k, vector<vector<unsigned char>> pixels) {
                     center = j;
                 }
             }
+            sum += min;
             flags[i] = center;
         }
         for (int i = 0; i < k; i ++) {
@@ -54,7 +58,8 @@ GMM::GMM(int k, vector<vector<unsigned char>> pixels) {
             centers[i][1] /= cnts[i];
             centers[i][2] /= cnts[i];
         }
-    }
+        times ++;
+    } while (sum / pixels.size() > 1000 && times < 10);
 
     auto after_pixels = vector<vector<vector<unsigned char>>>(k, vector<vector<unsigned char>>());
     for (int i = 0; i < pixels.size(); i ++) {

@@ -13,8 +13,8 @@ int main() {
         std::cout << "Image not loaded";
         return -1;
     }
-    auto graphcut = GrabCut(srcImage, {110, 50, 550, 337}, 5);
-    graphcut.iterative_process(5);
+    auto graphcut = GrabCut(srcImage, {110, 50, 500, 337}, 5);
+    graphcut.iterative_process(2);
     Mat mask = graphcut.get_mask();
     Mat res;
     srcImage.copyTo(res, mask);
