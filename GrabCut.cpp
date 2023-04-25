@@ -195,25 +195,28 @@ void GrabCut::step3() {
             Vec3b pixel = img.at<Vec3b>(j, i);
             // int id = (i - x1) * (y2 - y1 + 1) + j - y1;
             int id = i * img.cols + j;
+            // float x = -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]}));
+            // float y = -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]}));
             g->add_tweights(id,
                             -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]})),
                             -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]})));
 
             // 设置n-link
             if (left[i][j] > 0) {
+                float x = gamma * exp(-beta * left[i][j]);
                 g->add_edge(id, id - 1, gamma * exp(-beta * left[i][j]),
                             gamma * exp(-beta * left[i][j]));
             }
             if (leftup[i][j] > 0) {
-                g->add_edge(id, id - (y2 - y1 + 1) - 1, gamma * exp(-beta * leftup[i][j]),
+                g->add_edge(id, id - img.cols - 1, gamma * exp(-beta * leftup[i][j]),
                             gamma * exp(-beta * leftup[i][j]));
             }
             if (up[i][j] > 0) {
-                g->add_edge(id, id - (y2 - y1 + 1), gamma * exp(-beta * up[i][j]),
+                g->add_edge(id, id - img.cols, gamma * exp(-beta * up[i][j]),
                             gamma * exp(-beta * up[i][j]));
             }
             if (rightup[i][j] > 0) {
-                g->add_edge(id, id - (y2 - y1 + 1) + 1, gamma * exp(-beta * rightup[i][j]),
+                g->add_edge(id, id - img.cols + 1, gamma * exp(-beta * rightup[i][j]),
                             gamma * exp(-beta * rightup[i][j]));
             }
         }
@@ -250,9 +253,9 @@ void GrabCut::iterative_process(int max_iteration) {
 
 Mat GrabCut::get_mask() {
 
-    for (int i = y1; i <= y2; i ++) {
-        for (int j = x1; j <= x2; j ++) {
-            mask.at<uchar>(j, i) = alpha_matrix[i][j];
+    for (int i = x1; i <= x2; i ++) {
+        for (int j = y1; j <= y2; j ++) {
+            mask.at<uchar>(i, j) = alpha_matrix[j][i];
         }
     }
     return mask;
