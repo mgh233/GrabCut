@@ -153,7 +153,7 @@ void GrabCut::step2() {
     char* dt1 = ctime(&time1);
     cout << "GrabCut starts step2...\t" << dt1 << endl;
 
-    int sum = img.rows * img.cols;
+    int sum_0 = 0, sum_1 = 0;
     auto background_pixels = vector<vector<vector<unsigned char>>>(5, vector<vector<unsigned char>>());
     auto foreground_pixels = vector<vector<vector<unsigned char>>>(5, vector<vector<unsigned char>>());
     for (int i = 0; i < img.rows; i ++) {
@@ -163,16 +163,18 @@ void GrabCut::step2() {
             auto k = this->k_matrix[i][j];
             if (alpha == 0) {
                 background_pixels[k].push_back({pixel[0], pixel[1], pixel[2]});
+                sum_0 ++;
             }
             else {
                 foreground_pixels[k].push_back({pixel[0], pixel[1], pixel[2]});
+                sum_1 ++;
             }
         }
     }
 
     // 更新GMM
-    this->GMMs[0].update_all(background_pixels, sum);
-    this->GMMs[1].update_all(foreground_pixels, sum);
+    this->GMMs[0].update_all(background_pixels, sum_0);
+    this->GMMs[1].update_all(foreground_pixels, sum_1);
 
     time_t time2 = time(0);
     char* dt2 = ctime(&time2);
@@ -253,10 +255,16 @@ void GrabCut::iterative_process(int max_iteration) {
 
 Mat GrabCut::get_mask() {
 
-    for (int i = x1; i <= x2; i ++) {
-        for (int j = y1; j <= y2; j ++) {
-            mask.at<uchar>(i, j) = alpha_matrix[j][i];
-        }
+//    for (int i = 0; i < img.cols; i ++) {
+//        for (int j = 0; j < img.rows; j ++) {
+//            if (alpha_matrix[j][i])
+//                mask.at<uchar>(i, j) = 255;
+//        }
+//    }
+    Mat temp(0, alpha_matrix[0].size(), DataType<uchar>::type);
+    for (int i = 0; i < alpha_matrix.size(); i ++) {
+        Mat sample(1, alpha_matrix[0].size(), DataType<uchar>::type, alpha_matrix[i].data());
+        temp.push_back(sample);
     }
-    return mask;
+    return temp;
 }
