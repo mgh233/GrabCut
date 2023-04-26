@@ -5,6 +5,8 @@
 #include "GuassianModel.h"
 #include <iostream>
 
+const float PI = acos(-1);
+
 GaussianModel::GaussianModel(vector<vector<unsigned char>> pixels) {
 
     this->v_mean = vector<float>(3, 0.0);
@@ -86,6 +88,6 @@ float GaussianModel::get_prob(vector<unsigned char> pixel) {
     Mat res = diff_mat * covariance.inv() * diff_mat.t();
     float x = cv::determinant(covariance);
     float y = res.at<float>(0, 0);
-    return 1.0 / (2 * acos(-1) * sqrt(x)) * exp(-1.0 / 2 * y);
+    return 1.0 / (2 * PI * sqrt(x)) * exp(-1.0 / 2 * y);
 }
 

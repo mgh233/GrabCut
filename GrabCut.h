@@ -15,6 +15,8 @@
 using namespace std;
 using namespace cv;
 
+typedef Graph<int, int, int> GraphType;
+
 /*
  * GrabCut算法类
  * * * * * * * * * * * private * * * * * * * * * *
@@ -26,6 +28,8 @@ using namespace cv;
  * util: 工具类
  * beta, gamma: 用于计算V公式的参数
  * left, leftup, up, rightup: 分别用于存储图中一点与左方、左上、上方和右上方点的二阶范数
+ * g: 图，用于step3的最小割计算
+ * isGraphSet: 图是否被设置
  *
  * * * * * * * * * * * public * * * * * * * * * * *
  *
@@ -50,13 +54,15 @@ private:
     float beta;
     float gamma = 50;
     vector<vector<float>> left, leftup, up, rightup;
+    GraphType *g;
+    bool isGraphSet;
 
 public:
     void init(Mat img, Rect rect, int k);
     // float Dn(unsigned char alpha, unsigned char k, vector<float> bgr);
     void step1();
     void step2();
-    void step3();
+    void step3(bool isRevise);
     void iterative_process();
     void revise(vector<Point> background_pixels, vector<Point> foreground_pixels);
     Mat get_mask();

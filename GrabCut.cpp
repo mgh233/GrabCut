@@ -5,8 +5,6 @@
 #include "GrabCut.h"
 #include <time.h>
 
-typedef Graph<int, int, int> GraphType;
-
 void GrabCut::init(Mat img, Rect rect, int k) {
 
     time_t time1 = time(0);
@@ -108,6 +106,9 @@ void GrabCut::init(Mat img, Rect rect, int k) {
         }
     }
 
+    int all = (this->x2 - this->x1 + 1) * (this->y2 - this->y1 + 1);
+    g = new GraphType(all, 8 * all);
+
     time_t time2 = time(0);
     char* dt2 = ctime(&time2);
     cout << "GrabCut finish init.\t" << dt2 << endl;
@@ -186,54 +187,89 @@ void GrabCut::step2() {
 
 }
 
-void GrabCut::step3() {
+void GrabCut::step3(bool isRevise) {
 
     time_t time1 = time(0);
     char* dt1 = ctime(&time1);
     cout << "GrabCut starts step3...\t" << dt1 << endl;
 
-    int sum = (this->x2 - this->x1 + 1) * (this->y2 - this->y1 + 1);
-    GraphType *g = new GraphType(sum, 8 * sum);
-    int id = 0;
-    for (int i = 0; i < img.rows; i ++) {
-        for (int j = 0; j < img.cols; j ++) {
-            // 向图中加入节点并设置t-link
-            g->add_node();
-            Vec3b pixel = img.at<Vec3b>(j, i);
-            // int id = (i - x1) * (y2 - y1 + 1) + j - y1;
+    if (!isGraphSet) {
+        int id = 0;
+        for (int i = 0; i < img.rows; i ++) {
+            for (int j = 0; j < img.cols; j ++) {
+                // 向图中加入节点并设置t-link
+                g->add_node();
+                Vec3b pixel = img.at<Vec3b>(j, i);
+                // int id = (i - x1) * (y2 - y1 + 1) + j - y1;
 //            float x = -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]}));
 //            float y = -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]}));
-            if (i < y1 || i > y2 || j < x1 || j > x2) {
-                g->add_tweights(id, 0, 9 * gamma);
-            }
-            // alpha=2为用户设置的背景
-            else if (mask.at<uchar>(j ,i) == 2) {
-                g->add_tweights(id, 0, 9 * gamma);
-            }
-            else if (mask.at<uchar>(j, i) == 3) {
-                g->add_tweights(id, 9 * gamma, 0);
-            }
-            else {
-                g->add_tweights(id,
-                                -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]})),
-                                -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]})));
-            }
+                if (i < y1 || i > y2 || j < x1 || j > x2) {
+                    g->add_tweights(id, 0, 9 * gamma);
+                }
+                    // alpha=2为用户设置的背景
+                else if (mask.at<uchar>(j ,i) == 2) {
+                    g->add_tweights(id, 0, 9 * gamma);
+                }
+                else if (mask.at<uchar>(j, i) == 3) {
+                    g->add_tweights(id, 9 * gamma, 0);
+                }
+                else {
+                    g->add_tweights(id,
+                                    -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]})),
+                                    -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]})));
+                }
 
-            // 设置n-link
-            if (j - 1 >= 0) {
+                // 设置n-link
+                if (j - 1 >= 0) {
 //              float x = gamma * exp(-beta * left[i][j]);
-                g->add_edge(id, id - 1, left[i][j],left[i][j]);
+                    g->add_edge(id, id - 1, left[i][j],left[i][j]);
+                }
+                if (j - 1 >= 0 && i - 1 >= 0) {
+                    g->add_edge(id, id - img.cols - 1, leftup[i][j],leftup[i][j]);
+                }
+                if (i - 1 >= 0) {
+                    g->add_edge(id, id - img.cols, up[i][j],up[i][j]);
+                }
+                if (j + 1 < img.cols && i - 1 >= 0) {
+                    g->add_edge(id, id - img.cols + 1, rightup[i][j],rightup[i][j]);
+                }
+                id ++;
             }
-            if (j - 1 >= 0 && i - 1 >= 0) {
-                g->add_edge(id, id - img.cols - 1, leftup[i][j],leftup[i][j]);
+        }
+        isGraphSet = true;
+    }
+    else if (isRevise){
+        int id = 0;
+        for (int i = 0; i < img.rows; i ++) {
+            for (int j = 0; j < img.cols; j ++) {
+                if (mask.at<uchar>(j ,i) == 2) {
+                    g->set_tweights(id, 0, 9 * gamma);
+                }
+                else if (mask.at<uchar>(j, i) == 3) {
+                    g->set_tweights(id, 9 * gamma, 0);
+                }
+                id ++;
             }
-            if (i - 1 >= 0) {
-                g->add_edge(id, id - img.cols, up[i][j],up[i][j]);
+        }
+    }
+    else {
+        int id = 0;
+        for (int i = 0; i < img.rows; i ++) {
+            for (int j = 0; j < img.cols; j ++) {
+                Vec3b pixel = img.at<Vec3b>(j, i);
+                if (mask.at<uchar>(j ,i) == 2) {
+                    g->set_tweights(id, 0, 9 * gamma);
+                }
+                else if (mask.at<uchar>(j, i) == 3) {
+                    g->set_tweights(id, 9 * gamma, 0);
+                }
+                else {
+                    g->add_tweights(id,
+                                    -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]})),
+                                    -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]})));
+                }
+                id ++;
             }
-            if (j + 1 < img.cols && i - 1 >= 0) {
-                g->add_edge(id, id - img.cols + 1, rightup[i][j],rightup[i][j]);
-            }
-            id ++;
         }
     }
 
@@ -264,7 +300,7 @@ void GrabCut::iterative_process() {
 
         step1();
         step2();
-        step3();
+        step3(false);
 }
 
 Mat GrabCut::get_mask() {
@@ -291,24 +327,25 @@ Mat GrabCut::get_mask() {
 //            }
 //        }
 //    }
-    Mat temp = mask.clone();
-    for (int i = 0; i < temp.cols; i ++) {
-        for (int j = 0; j < temp.rows; j ++) {
-            temp.at<uchar>(i, j) = mask.at<uchar>(i, j) % 2;
-        }
-    }
-    return temp;
+//    Mat temp = mask.clone();
+//    for (int i = 0; i < temp.cols; i ++) {
+//        for (int j = 0; j < temp.rows; j ++) {
+//            temp.at<uchar>(i, j) = mask.at<uchar>(i, j) % 2;
+//        }
+//    }
+//    return temp;
+    return mask;
 }
 
 void GrabCut::revise(vector<cv::Point> background_pixels, vector<cv::Point> foreground_pixels) {
 
     for (int i = 0; i < background_pixels.size(); i ++) {
         auto pixel = background_pixels[i];
-        mask.at<uchar>(pixel.x, pixel.y) = 2;
+        mask.at<uchar>(pixel.y, pixel.x) = 2;
     }
     for (int i = 0; i < foreground_pixels.size(); i ++) {
         auto pixel = foreground_pixels[i];
-        mask.at<uchar>(pixel.x, pixel.y) = 3;
+        mask.at<uchar>(pixel.y, pixel.x) = 3;
     }
-    step3();
+    step3(true);
 }

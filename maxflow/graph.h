@@ -100,6 +100,7 @@ public:
 	// NOTE: the number of such edges is not counted in edge_num_max.
 	//       No internal memory is allocated by this call.
 	void add_tweights(node_id i, tcaptype cap_source, tcaptype cap_sink);
+    void set_tweights(node_id i, tcaptype cap_source, tcaptype cap_sink);
 
 
 	// Computes the maxflow. Can be called several times.
@@ -394,6 +395,19 @@ template <typename captype, typename tcaptype, typename flowtype>
 	else           cap_sink   -= delta;
 	flow += (cap_source < cap_sink) ? cap_source : cap_sink;
 	nodes[i].tr_cap = cap_source - cap_sink;
+}
+
+template <typename captype, typename tcaptype, typename flowtype>
+inline void Graph<captype,tcaptype,flowtype>::set_tweights(node_id i, tcaptype cap_source, tcaptype cap_sink)
+{
+    assert(i >= 0 && i < node_num);
+
+    nodes[i].tr_cap = 0;
+    tcaptype delta = nodes[i].tr_cap;
+    if (delta > 0) cap_source += delta;
+    else           cap_sink   -= delta;
+    flow += (cap_source < cap_sink) ? cap_source : cap_sink;
+    nodes[i].tr_cap = cap_source - cap_sink;
 }
 
 template <typename captype, typename tcaptype, typename flowtype> 
