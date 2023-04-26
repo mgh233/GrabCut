@@ -29,7 +29,7 @@ void GrabCut::init(Mat img, Rect rect, int k) {
     this->y2 = rect.br().y;
     for (int i = this->x1; i <= this->x2; i ++) {
         for (int j = this->y1; j <= this->y2; j ++) {
-            this->mask.at<uchar>(i, j)= 1;
+            this->mask.at<uchar>(j, i) = 1;
         }
     }
 
@@ -38,8 +38,8 @@ void GrabCut::init(Mat img, Rect rect, int k) {
     vector<vector<unsigned char>> foreground_pixels;
     for (int i = 0; i < rows; i ++) {
         for (int j = 0; j < cols; j ++) {
-            Vec3b pixel = img.at<Vec3b>(j, i);
-            if (this->mask.at<uchar>(j, i) == 0) {
+            Vec3b pixel = img.at<Vec3b>(i, j);
+            if (this->mask.at<uchar>(i, j) == 0) {
                 backgroud_pixels.push_back({pixel[0], pixel[1], pixel[2]});
             }
             else {
@@ -60,10 +60,10 @@ void GrabCut::init(Mat img, Rect rect, int k) {
     float sum = 0;
     for (int i = 0; i < img.rows; i ++) {
         for (int j = 0; j < img.cols; j ++) {
-            auto now_pixel = img.at<Vec3b>(j, i);
+            auto now_pixel = img.at<Vec3b>(i, j);
             // 与左边
             if (j - 1 >= 0) {
-                auto left_pixel = img.at<Vec3b>(j - 1, i);
+                auto left_pixel = img.at<Vec3b>(i, j - 1);
                 left[i][j] = pow(now_pixel[0] - left_pixel[0], 2)
                         + pow(now_pixel[1] - left_pixel[1], 2)
                         + pow(now_pixel[2] - left_pixel[2], 2);
@@ -71,7 +71,7 @@ void GrabCut::init(Mat img, Rect rect, int k) {
             }
             // 与左上
             if (j - 1 >= 0 && i - 1 >= 0) {
-                auto leftup_pixel = img.at<Vec3b>(j - 1, i - 1);
+                auto leftup_pixel = img.at<Vec3b>(i - 1, j - 1);
                 leftup[i][j] = pow(now_pixel[0] - leftup_pixel[0], 2)
                        + pow(now_pixel[1] - leftup_pixel[1], 2)
                        + pow(now_pixel[2] - leftup_pixel[2], 2);
@@ -79,7 +79,7 @@ void GrabCut::init(Mat img, Rect rect, int k) {
             }
             // 与上方
             if (i - 1 >= 0) {
-                auto up_pixel = img.at<Vec3b>(j, i - 1);
+                auto up_pixel = img.at<Vec3b>(i - 1, j);
                 up[i][j] = pow(now_pixel[0] - up_pixel[0], 2)
                        + pow(now_pixel[1] - up_pixel[1], 2)
                        + pow(now_pixel[2] - up_pixel[2], 2);
@@ -87,7 +87,7 @@ void GrabCut::init(Mat img, Rect rect, int k) {
             }
             // 与右上
             if (j + 1 < img.cols && i - 1 >= 0) {
-                auto rightup_pixel = img.at<Vec3b>(j + 1, i - 1);
+                auto rightup_pixel = img.at<Vec3b>(i - 1, j + 1);
                 rightup[i][j] = pow(now_pixel[0] - rightup_pixel[0], 2)
                        + pow(now_pixel[1] - rightup_pixel[1], 2)
                        + pow(now_pixel[2] - rightup_pixel[2], 2);
@@ -101,12 +101,12 @@ void GrabCut::init(Mat img, Rect rect, int k) {
         for (int j = 0; j < img.cols; j ++) {
             left[i][j] = gamma * exp(-beta * left[i][j]);
             up[i][j] = gamma * exp(-beta * up[i][j]);
-            leftup[i][j] = gamma * exp(-beta * leftup[i][j]);
-            rightup[i][j] = gamma * exp(-beta * rightup[i][j]);
+            leftup[i][j] = gamma * exp(-beta * leftup[i][j]) / sqrt(2);
+            rightup[i][j] = gamma * exp(-beta * rightup[i][j]) / sqrt(2);
         }
     }
 
-    int all = (this->x2 - this->x1 + 1) * (this->y2 - this->y1 + 1);
+    int all = img.cols * img.rows;
     g = new GraphType(all, 8 * all);
 
     time_t time2 = time(0);
@@ -142,8 +142,8 @@ void GrabCut::step1() {
 
     for (int i = 0; i < rows; i ++) {
         for (int j = 0; j < cols; j ++) {
-            Vec3b pixel = this->img.at<Vec3b>(j, i);
-            this->k_matrix[i][j] = GMMs[mask.at<uchar>(j, i) % 2].get_most_prob({pixel[0], pixel[1], pixel[2]});
+            Vec3b pixel = this->img.at<Vec3b>(i, j);
+            this->k_matrix[i][j] = GMMs[mask.at<uchar>(i, j) % 2].get_most_prob({pixel[0], pixel[1], pixel[2]});
         }
     }
 
@@ -163,8 +163,8 @@ void GrabCut::step2() {
     auto foreground_pixels = vector<vector<vector<unsigned char>>>(5, vector<vector<unsigned char>>());
     for (int i = 0; i < img.rows; i ++) {
         for (int j = 0; j < img.cols; j ++) {
-            auto pixel = img.at<Vec3b>(j, i);
-            auto alpha = this->mask.at<uchar>(j, i) % 2;
+            auto pixel = img.at<Vec3b>(i, j);
+            auto alpha = this->mask.at<uchar>(i, j) % 2;
             auto k = this->k_matrix[i][j];
             if (alpha == 0) {
                 background_pixels[k].push_back({pixel[0], pixel[1], pixel[2]});
@@ -199,7 +199,7 @@ void GrabCut::step3(bool isRevise) {
             for (int j = 0; j < img.cols; j ++) {
                 // 向图中加入节点并设置t-link
                 g->add_node();
-                Vec3b pixel = img.at<Vec3b>(j, i);
+                Vec3b pixel = img.at<Vec3b>(i, j);
                 // int id = (i - x1) * (y2 - y1 + 1) + j - y1;
 //            float x = -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]}));
 //            float y = -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]}));
@@ -207,10 +207,10 @@ void GrabCut::step3(bool isRevise) {
                     g->add_tweights(id, 0, 9 * gamma);
                 }
                     // alpha=2为用户设置的背景
-                else if (mask.at<uchar>(j ,i) == 2) {
+                else if (mask.at<uchar>(i ,j) == 2) {
                     g->add_tweights(id, 0, 9 * gamma);
                 }
-                else if (mask.at<uchar>(j, i) == 3) {
+                else if (mask.at<uchar>(i, j) == 3) {
                     g->add_tweights(id, 9 * gamma, 0);
                 }
                 else {
@@ -242,10 +242,10 @@ void GrabCut::step3(bool isRevise) {
         int id = 0;
         for (int i = 0; i < img.rows; i ++) {
             for (int j = 0; j < img.cols; j ++) {
-                if (mask.at<uchar>(j ,i) == 2) {
+                if (mask.at<uchar>(i ,j) == 2) {
                     g->set_tweights(id, 0, 9 * gamma);
                 }
-                else if (mask.at<uchar>(j, i) == 3) {
+                else if (mask.at<uchar>(i, j) == 3) {
                     g->set_tweights(id, 9 * gamma, 0);
                 }
                 id ++;
@@ -256,14 +256,14 @@ void GrabCut::step3(bool isRevise) {
         int id = 0;
         for (int i = 0; i < img.rows; i ++) {
             for (int j = 0; j < img.cols; j ++) {
-                Vec3b pixel = img.at<Vec3b>(j, i);
-                if (mask.at<uchar>(j ,i) == 2) {
+                if (mask.at<uchar>(i ,j) == 2) {
                     g->set_tweights(id, 0, 9 * gamma);
                 }
-                else if (mask.at<uchar>(j, i) == 3) {
+                else if (mask.at<uchar>(i, j) == 3) {
                     g->set_tweights(id, 9 * gamma, 0);
                 }
                 else {
+                    Vec3b pixel = img.at<Vec3b>(i, j);
                     g->add_tweights(id,
                                     -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]})),
                                     -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]})));
@@ -276,16 +276,17 @@ void GrabCut::step3(bool isRevise) {
     float flow = g->maxflow();
 
     for (int i = y1; i <= y2; i ++) {
-        for (int j = x1; j <= x2; j ++) {
-            if (mask.at<uchar>(j, i) == 2 || mask.at<uchar>(j, i) == 3) {
+        for (int j = x1; j < x2; j ++) {
+//            if (i < y1 || i > y2 || j < x1 || j > x2) continue;
+            if (mask.at<uchar>(i, j) == 2 || mask.at<uchar>(i, j) == 3) {
                 continue;
             }
             int id = i * img.cols + j;
             if (g->what_segment(id) == GraphType::SINK) {
-                mask.at<uchar>(j, i) = 0;
+                mask.at<uchar>(i, j) = 0;
             }
             else {
-                mask.at<uchar>(j, i) = 1;
+                mask.at<uchar>(i, j) = 1;
             }
         }
     }
@@ -341,11 +342,11 @@ void GrabCut::revise(vector<cv::Point> background_pixels, vector<cv::Point> fore
 
     for (int i = 0; i < background_pixels.size(); i ++) {
         auto pixel = background_pixels[i];
-        mask.at<uchar>(pixel.y, pixel.x) = 2;
+        mask.at<uchar>(pixel) = 2;
     }
     for (int i = 0; i < foreground_pixels.size(); i ++) {
         auto pixel = foreground_pixels[i];
-        mask.at<uchar>(pixel.y, pixel.x) = 3;
+        mask.at<uchar>(pixel) = 3;
     }
     step3(true);
 }
