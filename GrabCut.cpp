@@ -111,6 +111,7 @@ void GrabCut::init(Mat img, Rect rect, int k) {
 
     int all = img.cols * img.rows;
     g = new GraphType(all, 8 * all);
+    E = 0;
 
 }
 
@@ -200,17 +201,20 @@ void GrabCut::step3(bool isRevise) {
 
                 // 设置n-link
                 if (j - 1 >= 0) {
-//              float x = gamma * exp(-beta * left[i][j]);
                     g->add_edge(id, id - 1, left[i][j],left[i][j]);
+                    if (mask.at<uchar>(i, j) != mask.at<uchar>(i, j - 1)) E += left[i][j];
                 }
                 if (j - 1 >= 0 && i - 1 >= 0) {
                     g->add_edge(id, id - img.cols - 1, leftup[i][j],leftup[i][j]);
+                    if (mask.at<uchar>(i, j) != mask.at<uchar>(i - 1, j - 1)) E += leftup[i][j];
                 }
                 if (i - 1 >= 0) {
                     g->add_edge(id, id - img.cols, up[i][j],up[i][j]);
+                    if (mask.at<uchar>(i, j) != mask.at<uchar>(i - 1, j)) E += up[i][j];
                 }
                 if (j + 1 < img.cols && i - 1 >= 0) {
                     g->add_edge(id, id - img.cols + 1, rightup[i][j],rightup[i][j]);
+                    if (mask.at<uchar>(i, j) != mask.at<uchar>(i - 1, j + 1)) E += rightup[i][j];
                 }
                 id ++;
             }
@@ -278,8 +282,10 @@ void GrabCut::iterative_process() {
         step1();
         step2();
         step3(false);
+        cal_E();
         long time2 = getCurrentTime();
         cout << "耗时：" << time2 - time1 << " ms" << endl;
+        cout << "能量函数：" << log(E) << endl;
 }
 
 Mat GrabCut::get_mask() {
@@ -289,6 +295,7 @@ Mat GrabCut::get_mask() {
 
 void GrabCut::revise(vector<cv::Point> background_pixels, vector<cv::Point> foreground_pixels) {
 
+    long time1 = getCurrentTime();
     for (int i = 0; i < background_pixels.size(); i ++) {
         auto pixel = background_pixels[i];
         mask.at<uchar>(pixel) = 2;
@@ -298,4 +305,39 @@ void GrabCut::revise(vector<cv::Point> background_pixels, vector<cv::Point> fore
         mask.at<uchar>(pixel) = 3;
     }
     step3(true);
+    cal_E();
+    long time2 = getCurrentTime();
+    cout << "耗时：" << time2 - time1 << " ms" << endl;
+    cout << "能量函数：" << log(E) << endl;
+}
+
+void GrabCut::cal_E() {
+
+    E = 0;
+    for (int i = y1; i <= y2; i ++) {
+        for (int j = x1; j <= x2; j ++) {
+            Vec3b pixel = img.at<Vec3b>(i, j);
+            // U
+            E += -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]})) > 1e9 ?
+                    1e9 : -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]}));
+            // V
+            if (j - 1 >= 0 && mask.at<uchar>(i, j) != mask.at<uchar>(i, j - 1)) {
+                E += left[i][j];
+            }
+            if (j - 1 >= 0 && i - 1 >= 0 && mask.at<uchar>(i, j) != mask.at<uchar>(i - 1, j - 1)) {
+                E += leftup[i][j];
+            }
+            if (i - 1 >= 0 && mask.at<uchar>(i, j) != mask.at<uchar>(i - 1, j)) {
+                E += up[i][j];
+            }
+            if (j + 1 < img.cols && i - 1 >= 0 && mask.at<uchar>(i, j) != mask.at<uchar>(i - 1, j + 1)) {
+                E += rightup[i][j];
+            }
+        }
+    }
+}
+
+long double GrabCut::get_E() {
+
+    return E;
 }
