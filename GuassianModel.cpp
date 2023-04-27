@@ -7,22 +7,6 @@
 
 const float PI = acos(-1);
 
-float CarmSqrt(float x){
-    union{
-        int intPart;
-        float floatPart;
-    } convertor;
-    union{
-        int intPart;
-        float floatPart;
-    } convertor2;
-    convertor.floatPart = x;
-    convertor2.floatPart = x;
-    convertor.intPart = 0x1FBCF800 + (convertor.intPart >> 1);
-    convertor2.intPart = 0x5f3759df - (convertor2.intPart >> 1);
-    return 0.5f*(convertor.floatPart + (x * convertor2.floatPart));
-}
-
 GaussianModel::GaussianModel(vector<vector<unsigned char>> pixels) {
 
     this->v_mean = vector<float>(3, 0.0);
@@ -97,15 +81,14 @@ void GaussianModel::update(vector<vector<unsigned char>> pixels) {
 float GaussianModel::get_prob(vector<unsigned char> pixel) {
 
     vector<float> diff = {pixel[0] - v_mean[0], pixel[1] - v_mean[1], pixel[2] - v_mean[2]};
-    // cout << diff[0] << diff[1] << diff[2] << endl;
-    // Mat diff_mat = Mat::zeros(1, 3, CV_32FC1);
-    Mat diff_mat = cv::Mat(diff).reshape(0, 1);
-    // reverse.convertTo(reverse, DataType<float>::type);
-//    for (int i = 0; i < 3; i ++) {
-//        diff_mat.at<float>(i, 0) = diff[i];
-//    }
-    Mat res = diff_mat * covariance_inv * diff_mat.t();
-    float y = res.at<float>(0, 0);
+//    Mat diff_mat = cv::Mat(diff).reshape(0, 1);
+//    Mat res = diff_mat * covariance_inv * diff_mat.t();
+//    float y = res.at<float>(0, 0);
+    float y = diff[0] * (diff[0] * covariance_inv.at<float>(0, 0) + diff[1] * covariance_inv.at<float>(1, 0)
+            + diff[2] * covariance_inv.at<float>(2, 0)) + diff[1] * (diff[0] * covariance_inv.at<float>(0, 1)
+            + diff[1] * covariance_inv.at<float>(1, 1) + diff[2] * covariance_inv.at<float>(2, 1))
+            + diff[2] * (diff[0] * covariance_inv.at<float>(0, 2)
+            + diff[1] * covariance_inv.at<float>(1, 2) + diff[2] * covariance_inv.at<float>(2, 2));
     return 1.0 / (2 * PI * sqrt(covariance_value)) * exp(-0.5 * y);
 }
 
