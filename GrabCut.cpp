@@ -3,13 +3,16 @@
 //
 
 #include "GrabCut.h"
-#include <time.h>
+#include <sys/time.h>
+
+long getCurrentTime()
+{
+    struct timeval tv;
+    gettimeofday(&tv,NULL);
+    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
 
 void GrabCut::init(Mat img, Rect rect, int k) {
-
-    time_t time1 = time(0);
-    char* dt1 = ctime(&time1);
-    cout << "GrabCut starts init...\t" << dt1 << endl;
 
     this->img = img;
 
@@ -109,10 +112,6 @@ void GrabCut::init(Mat img, Rect rect, int k) {
     int all = img.cols * img.rows;
     g = new GraphType(all, 8 * all);
 
-    time_t time2 = time(0);
-    char* dt2 = ctime(&time2);
-    cout << "GrabCut finish init.\t" << dt2 << endl;
-
 }
 
 //float GrabCut::Dn(unsigned char alpha, unsigned char k, vector<float> bgr) {
@@ -133,10 +132,6 @@ void GrabCut::init(Mat img, Rect rect, int k) {
 
 void GrabCut::step1() {
 
-    time_t time1 = time(0);
-    char* dt1 = ctime(&time1);
-    cout << "GrabCut starts step1...\t" << dt1 << endl;
-
     int cols = this->img.cols;
     int rows = this->img.rows;
 
@@ -146,17 +141,9 @@ void GrabCut::step1() {
             this->k_matrix[i][j] = GMMs[mask.at<uchar>(i, j) % 2].get_most_prob({pixel[0], pixel[1], pixel[2]});
         }
     }
-
-//    time_t time2 = time(0);
-//    char* dt2 = ctime(&time2);
-//    cout << "GrabCut finish step1.\t" << dt2 << endl;
 }
 
 void GrabCut::step2() {
-
-//    time_t time1 = time(0);
-//    char* dt1 = ctime(&time1);
-//    cout << "GrabCut starts step2...\t" << dt1 << endl;
 
     int sum_0 = 0, sum_1 = 0;
     auto background_pixels = vector<vector<vector<unsigned char>>>(5, vector<vector<unsigned char>>());
@@ -181,17 +168,9 @@ void GrabCut::step2() {
     this->GMMs[0].update_all(background_pixels, sum_0);
     this->GMMs[1].update_all(foreground_pixels, sum_1);
 
-    time_t time2 = time(0);
-    char* dt2 = ctime(&time2);
-    cout << "GrabCut finish step2.\t" << dt2 << endl;
-
 }
 
 void GrabCut::step3(bool isRevise) {
-
-    time_t time1 = time(0);
-    char* dt1 = ctime(&time1);
-    cout << "GrabCut starts step3...\t" << dt1 << endl;
 
     if (!isGraphSet) {
         int id = 0;
@@ -291,50 +270,20 @@ void GrabCut::step3(bool isRevise) {
         }
     }
 
-    time_t time2 = time(0);
-    char* dt2 = ctime(&time2);
-    cout << "GrabCut finish step3.\t" << dt2 << endl;
-
 }
 
 void GrabCut::iterative_process() {
 
+        long time1 = getCurrentTime();
         step1();
         step2();
         step3(false);
+        long time2 = getCurrentTime();
+        cout << "耗时：" << time2 - time1 << " ms" << endl;
 }
 
 Mat GrabCut::get_mask() {
 
-//    for (int i = 0; i < img.cols; i ++) {
-//        for (int j = 0; j < img.rows; j ++) {
-//            if (alpha_matrix[j][i])
-//                mask.at<uchar>(i, j) = 255;
-//        }
-//    }
-//    Mat temp(0, alpha_matrix[0].size(), DataType<uchar>::type);
-//    for (int i = 0; i < alpha_matrix.size(); i ++) {
-//        Mat sample(1, alpha_matrix[0].size(), DataType<uchar>::type, alpha_matrix[i].data());
-//        temp.push_back(sample);
-//    }
-//    mask = temp;
-//    for (int i = x1; i <= x2; i ++) {
-//        for (int j = y1; j <= y2; j ++) {
-//            if (alpha_matrix[j][i] == 2) {
-//                temp.at<uchar>(i, j) = 0;
-//            }
-//            else if (alpha_matrix[j][i] == 3) {
-//                temp.at<uchar>(i, j) = 1;
-//            }
-//        }
-//    }
-//    Mat temp = mask.clone();
-//    for (int i = 0; i < temp.cols; i ++) {
-//        for (int j = 0; j < temp.rows; j ++) {
-//            temp.at<uchar>(i, j) = mask.at<uchar>(i, j) % 2;
-//        }
-//    }
-//    return temp;
     return mask;
 }
 

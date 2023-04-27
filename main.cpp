@@ -293,12 +293,11 @@ int main( int argc, char** argv )
                 break;
             case 'n':
                 int iterCount = gcapp.getIterCount();
-                cout << "<" << iterCount << "... ";
+                cout << "<" << iterCount << ">";
                 int newIterCount = gcapp.nextIter();
                 if( newIterCount > iterCount )
                 {
                     gcapp.showImage();
-                    cout << iterCount << ">" << endl;
                 }
                 else
                     cout << "rect must be determined>" << endl;
