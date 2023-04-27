@@ -11,6 +11,7 @@
 #include "GMM.h"
 #include "graph.h"
 #include "util.h"
+#include <cmath>
 
 using namespace std;
 using namespace cv;

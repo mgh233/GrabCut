@@ -7,6 +7,7 @@
 #include <vector>
 #include "opencv2/core.hpp"
 #include "opencv2/core/mat.hpp"
+#include <cmath>
 
 using namespace std;
 using namespace cv;
@@ -33,6 +34,8 @@ class GaussianModel {
 private:
     vector<float> v_mean;
     Mat covariance;
+    float covariance_value;
+    Mat covariance_inv;
 
 public:
     explicit GaussianModel(vector<vector<unsigned char>> pixels);

@@ -147,16 +147,16 @@ void GrabCut::step1() {
         }
     }
 
-    time_t time2 = time(0);
-    char* dt2 = ctime(&time2);
-    cout << "GrabCut finish step1.\t" << dt2 << endl;
+//    time_t time2 = time(0);
+//    char* dt2 = ctime(&time2);
+//    cout << "GrabCut finish step1.\t" << dt2 << endl;
 }
 
 void GrabCut::step2() {
 
-    time_t time1 = time(0);
-    char* dt1 = ctime(&time1);
-    cout << "GrabCut starts step2...\t" << dt1 << endl;
+//    time_t time1 = time(0);
+//    char* dt1 = ctime(&time1);
+//    cout << "GrabCut starts step2...\t" << dt1 << endl;
 
     int sum_0 = 0, sum_1 = 0;
     auto background_pixels = vector<vector<vector<unsigned char>>>(5, vector<vector<unsigned char>>());
