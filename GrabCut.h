@@ -35,7 +35,6 @@ typedef Graph<int, int, int> GraphType;
  * * * * * * * * * * * public * * * * * * * * * * *
  *
  * init(Mat, vector<int>): 使用img和矩形位置初始化
- * Dn(uc, uc, vector<uc>): Dn函数的计算
  * step1~3(): 迭代过程中的第一到第三步
  * iterative_process(int): 迭代过程
  * get_mask(): 获取掩码
