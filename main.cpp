@@ -77,6 +77,7 @@ void GCApplication::reset()
     lblsState = NOT_SET;
     prLblsState = NOT_SET;
     iterCount = 0;
+    grabcut = GrabCut();
 }
 void GCApplication::setImageAndWinName( const Mat& _image, const string& _winName  )
 {
@@ -270,7 +271,7 @@ static void on_mouse( int event, int x, int y, int flags, void* param )
 int main( int argc, char** argv )
 {
     help(argv);
-    string filename = "/Users/muguohong/Documents/资料/南开/GrabCut/pic/butterfly.jpg";
+    string filename = "../pic/cat_2.jpg";
     Mat image = imread(filename, IMREAD_COLOR);
     const string winName = "image";
     namedWindow( winName, WINDOW_AUTOSIZE );
