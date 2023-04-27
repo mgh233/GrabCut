@@ -58,7 +58,7 @@ GaussianModel::GaussianModel(vector<vector<unsigned char>> pixels) {
 Mat GaussianModel::get_covariance() {
 
     return this->covariance;
-
+}
 
 vector<float> GaussianModel::get_mean() {
 
