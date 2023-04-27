@@ -4,6 +4,7 @@
 
 #include "GrabCut.h"
 #include <sys/time.h>
+#include <limits>
 
 long getCurrentTime()
 {
@@ -98,14 +99,16 @@ void GrabCut::init(Mat img, Rect rect, int k) {
             }
         }
     }
-    this->beta = 1.0 / (2 * sum / (4 * img.cols * img.rows - 3 * img.cols - 3 * img.rows + 2));
+    if( sum <= std::numeric_limits<double>::epsilon() )
+        this->beta = 0;
+    else this->beta = 1.0 / (2 * sum / (4 * img.cols * img.rows - 3 * img.cols - 3 * img.rows + 2));
 
     for (int i = 0; i < img.rows; i ++) {
         for (int j = 0; j < img.cols; j ++) {
             left[i][j] = gamma * exp(-beta * left[i][j]);
             up[i][j] = gamma * exp(-beta * up[i][j]);
-            leftup[i][j] = gamma * exp(-beta * leftup[i][j]) / sqrt(2);
-            rightup[i][j] = gamma * exp(-beta * rightup[i][j]) / sqrt(2);
+            leftup[i][j] = gamma * exp(-beta * leftup[i][j]) / sqrt(2.0);
+            rightup[i][j] = gamma * exp(-beta * rightup[i][j]) / sqrt(2.0);
         }
     }
 
@@ -114,22 +117,6 @@ void GrabCut::init(Mat img, Rect rect, int k) {
     E = 0;
 
 }
-
-//float GrabCut::Dn(unsigned char alpha, unsigned char k, vector<float> bgr) {
-//
-//    GMM model = this->GMMs[alpha];
-//    float weight = model.get_weight((int)k);
-//    vector<float> mean = model.get_mean((int)k);
-//    vector<vector<float>> covariance = model.get_covariance((int)k);
-//
-//    float det_covariance = tool.det(covariance);
-//    for (int i = 0; i < bgr.size(); i ++) {
-//        bgr[i] -= mean[i];
-//    }
-//
-//    return -log((double)weight) + 1.0 / 2 * log(det_covariance)
-//            + 1.0 / 2 * tool.matrix_mul(tool.matrix_mul(bgr, covariance), bgr);
-//}
 
 void GrabCut::step1() {
 
@@ -202,19 +189,15 @@ void GrabCut::step3(bool isRevise) {
                 // 设置n-link
                 if (j - 1 >= 0) {
                     g->add_edge(id, id - 1, left[i][j],left[i][j]);
-                    if (mask.at<uchar>(i, j) != mask.at<uchar>(i, j - 1)) E += left[i][j];
                 }
                 if (j - 1 >= 0 && i - 1 >= 0) {
                     g->add_edge(id, id - img.cols - 1, leftup[i][j],leftup[i][j]);
-                    if (mask.at<uchar>(i, j) != mask.at<uchar>(i - 1, j - 1)) E += leftup[i][j];
                 }
                 if (i - 1 >= 0) {
                     g->add_edge(id, id - img.cols, up[i][j],up[i][j]);
-                    if (mask.at<uchar>(i, j) != mask.at<uchar>(i - 1, j)) E += up[i][j];
                 }
                 if (j + 1 < img.cols && i - 1 >= 0) {
                     g->add_edge(id, id - img.cols + 1, rightup[i][j],rightup[i][j]);
-                    if (mask.at<uchar>(i, j) != mask.at<uchar>(i - 1, j + 1)) E += rightup[i][j];
                 }
                 id ++;
             }
