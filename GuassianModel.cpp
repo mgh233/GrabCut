@@ -91,4 +91,3 @@ float GaussianModel::get_prob(vector<unsigned char> pixel) {
             + diff[1] * covariance_inv.at<float>(1, 2) + diff[2] * covariance_inv.at<float>(2, 2));
     return 1.0 / (2 * PI * sqrt(covariance_value)) * exp(-0.5 * y);
 }
-

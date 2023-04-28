@@ -121,3 +121,8 @@ int GMM::get_most_prob(vector<unsigned char> pixel) {
     }
     return res;
 }
+
+GaussianModel GMM::get_model(int k) {
+
+    return models[k];
+}

@@ -8,6 +8,7 @@
 #include "opencv2/core.hpp"
 #include "opencv2/core/mat.hpp"
 #include <cmath>
+#include <iostream>
 
 using namespace std;
 using namespace cv;

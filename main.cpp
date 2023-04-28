@@ -271,7 +271,7 @@ static void on_mouse( int event, int x, int y, int flags, void* param )
 int main( int argc, char** argv )
 {
     help(argv);
-    string filename = "../pic/cat_2.jpg";
+    string filename = "../pic/bird_2.jpg";
     Mat image = imread(filename, IMREAD_COLOR);
     const string winName = "image";
     namedWindow( winName, WINDOW_AUTOSIZE );

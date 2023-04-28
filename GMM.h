@@ -45,6 +45,7 @@ public:
     void update_all(vector<vector<vector<unsigned char>>> pixels, int sum);
     float get_prob(vector<unsigned char> pixel);
     int get_most_prob(vector<unsigned char> pixel);
+    GaussianModel get_model(int k);
 
 };
 

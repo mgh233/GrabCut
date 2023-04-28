@@ -3,8 +3,10 @@
 //
 
 #include "GrabCut.h"
+#include "GMM.h"
 #include <sys/time.h>
 #include <limits>
+#include <fstream>
 
 long getCurrentTime()
 {
@@ -160,6 +162,8 @@ void GrabCut::step2() {
 
 void GrabCut::step3(bool isRevise) {
 
+    int all = img.cols * img.rows;
+    g = new GraphType(all, 8 * all);
     if (!isGraphSet) {
         int id = 0;
         for (int i = 0; i < img.rows; i ++) {
@@ -167,9 +171,6 @@ void GrabCut::step3(bool isRevise) {
                 // 向图中加入节点并设置t-link
                 g->add_node();
                 Vec3b pixel = img.at<Vec3b>(i, j);
-                // int id = (i - x1) * (y2 - y1 + 1) + j - y1;
-//            float x = -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]}));
-//            float y = -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]}));
                 if (i < y1 || i > y2 || j < x1 || j > x2) {
                     g->add_tweights(id, 0, 9 * gamma);
                 }
@@ -202,42 +203,42 @@ void GrabCut::step3(bool isRevise) {
                 id ++;
             }
         }
-        isGraphSet = true;
+//        isGraphSet = true;
     }
-    else if (isRevise){
-        int id = 0;
-        for (int i = 0; i < img.rows; i ++) {
-            for (int j = 0; j < img.cols; j ++) {
-                if (mask.at<uchar>(i ,j) == 2) {
-                    g->set_tweights(id, 0, 9 * gamma);
-                }
-                else if (mask.at<uchar>(i, j) == 3) {
-                    g->set_tweights(id, 9 * gamma, 0);
-                }
-                id ++;
-            }
-        }
-    }
-    else {
-        int id = 0;
-        for (int i = 0; i < img.rows; i ++) {
-            for (int j = 0; j < img.cols; j ++) {
-                if (mask.at<uchar>(i ,j) == 2) {
-                    g->set_tweights(id, 0, 9 * gamma);
-                }
-                else if (mask.at<uchar>(i, j) == 3) {
-                    g->set_tweights(id, 9 * gamma, 0);
-                }
-                else {
-                    Vec3b pixel = img.at<Vec3b>(i, j);
-                    g->add_tweights(id,
-                                    -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]})),
-                                    -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]})));
-                }
-                id ++;
-            }
-        }
-    }
+//    else if (isRevise){
+//        int id = 0;
+//        for (int i = 0; i < img.rows; i ++) {
+//            for (int j = 0; j < img.cols; j ++) {
+//                if (mask.at<uchar>(i ,j) == 2) {
+//                    g->set_tweights(id, 0, 9 * gamma);
+//                }
+//                else if (mask.at<uchar>(i, j) == 3) {
+//                    g->set_tweights(id, 9 * gamma, 0);
+//                }
+//                id ++;
+//            }
+//        }
+//    }
+//    else {
+//        int id = 0;
+//        for (int i = 0; i < img.rows; i ++) {
+//            for (int j = 0; j < img.cols; j ++) {
+//                if (mask.at<uchar>(i ,j) == 2) {
+//                    g->set_tweights(id, 0, 9 * gamma);
+//                }
+//                else if (mask.at<uchar>(i, j) == 3) {
+//                    g->set_tweights(id, 9 * gamma, 0);
+//                }
+//                else {
+//                    Vec3b pixel = img.at<Vec3b>(i, j);
+//                    g->add_tweights(id,
+//                                    -log(GMMs[0].get_prob({pixel[0], pixel[1], pixel[2]})),
+//                                    -log(GMMs[1].get_prob({pixel[0], pixel[1], pixel[2]})));
+//                }
+//                id ++;
+//            }
+//        }
+//    }
 
     float flow = g->maxflow();
 
@@ -257,18 +258,20 @@ void GrabCut::step3(bool isRevise) {
         }
     }
 
+    delete g;
 }
 
 void GrabCut::iterative_process() {
 
-        long time1 = getCurrentTime();
-        step1();
-        step2();
-        step3(false);
-        cal_E();
-        long time2 = getCurrentTime();
-        cout << "耗时：" << time2 - time1 << " ms" << endl;
-        cout << "能量函数：" << log(E) << endl;
+    long time1 = getCurrentTime();
+    step1();
+    step2();
+    step3(false);
+    output();
+    cal_E();
+    long time2 = getCurrentTime();
+    cout << "耗时：" << time2 - time1 << " ms" << endl;
+    cout << "能量函数：" << log(E) << endl;
 }
 
 Mat GrabCut::get_mask() {
@@ -323,4 +326,33 @@ void GrabCut::cal_E() {
 long double GrabCut::get_E() {
 
     return E;
+}
+
+void GrabCut::output() {
+
+    string filename = "../result.txt";
+    ofstream outfile;
+    outfile.open(filename, ios::out|ios::app);
+    outfile << "* * * * * * * * * * * * * * * * * * * * * * *" << endl;
+    outfile << "背景模型：" << endl;
+    GMM models_0 = GMMs[0];
+    for (int i = 0; i < 5; i ++) {
+        auto model = models_0.get_model(i);
+        outfile << "高斯模型" << i << "："<< endl;
+        Mat mean = Mat(model.get_mean(), CV_32FC1);
+        outfile << "均值：" << mean << endl;
+        outfile << "协方差矩阵：" << model.get_covariance() << endl;
+        outfile << "权重：" << models_0.get_weight(i) << endl;
+        outfile << endl;
+    }
+    GMM models_1 = GMMs[1];
+    for (int i = 0; i < 5; i ++) {
+        auto model = models_1.get_model(i);
+        outfile << "高斯模型" << i << "："<< endl;
+        Mat mean = Mat(model.get_mean(), CV_32FC1).t();
+        outfile << "均值：" << mean << endl;
+        outfile << "协方差矩阵：" << model.get_covariance() << endl;
+        outfile << "权重：" << models_1.get_weight(i) << endl;
+        outfile << endl;
+    }
 }

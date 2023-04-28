@@ -40,6 +40,7 @@ typedef Graph<int, int, int> GraphType;
  * revise(vector<>, vector<>): 根据用户反馈结果重新执行step3
  * cal_E(): 计算能量函数
  * get_E(): 获取能量函数
+ * output(): 输出关键信息到文件
  *
  */
 class GrabCut {
@@ -67,6 +68,7 @@ public:
     Mat get_mask();
     void cal_E();
     long double get_E();
+    void output();
 
 };
 
