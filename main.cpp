@@ -2,6 +2,7 @@
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
 #include <iostream>
+#include <fstream>
 #include "GrabCut.h"
 using namespace std;
 using namespace cv;
@@ -270,8 +271,13 @@ static void on_mouse( int event, int x, int y, int flags, void* param )
 }
 int main( int argc, char** argv )
 {
+    // 清空结果文件
+    ofstream file;
+    file.open("../result.txt", ios_base::out);
+    file.close();
+
     help(argv);
-    string filename = "../pic/bird_2.jpg";
+    string filename = "../pic/cat_3.jpg";
     Mat image = imread(filename, IMREAD_COLOR);
     const string winName = "image";
     namedWindow( winName, WINDOW_AUTOSIZE );

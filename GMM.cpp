@@ -113,7 +113,7 @@ int GMM::get_most_prob(vector<unsigned char> pixel) {
     int res = 0;
     float prob = 0.0;
     for (int i = 0; i < k; i ++) {
-        float now = models[i].get_prob(pixel);
+        float now = models[i].get_prob(pixel) * weights[i];
         if (now > prob) {
             res = i;
             prob = now;
