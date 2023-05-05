@@ -339,19 +339,20 @@ void GrabCut::output() {
     for (int i = 0; i < 5; i ++) {
         auto model = models_0.get_model(i);
         outfile << "高斯模型" << i << "："<< endl;
-        Mat mean = Mat(model.get_mean(), CV_32FC1);
-        outfile << "均值：" << mean << endl;
-        outfile << "协方差矩阵：" << model.get_covariance() << endl;
+        Mat mean = Mat(model.get_mean(), CV_32FC1).t();
+        outfile << "均值：" << mean << "\t";
+        //outfile << "协方差矩阵：" << model.get_covariance() << endl;
         outfile << "权重：" << models_0.get_weight(i) << endl;
         outfile << endl;
     }
+    outfile << "前景模型：" << endl;
     GMM models_1 = GMMs[1];
     for (int i = 0; i < 5; i ++) {
         auto model = models_1.get_model(i);
         outfile << "高斯模型" << i << "："<< endl;
         Mat mean = Mat(model.get_mean(), CV_32FC1).t();
-        outfile << "均值：" << mean << endl;
-        outfile << "协方差矩阵：" << model.get_covariance() << endl;
+        outfile << "均值：" << mean << "\t";
+        // outfile << "协方差矩阵：" << model.get_covariance() << endl;
         outfile << "权重：" << models_1.get_weight(i) << endl;
         outfile << endl;
     }

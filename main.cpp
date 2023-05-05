@@ -277,7 +277,7 @@ int main( int argc, char** argv )
     file.close();
 
     help(argv);
-    string filename = "../pic/cat_3.jpg";
+    string filename = "../pic/bird.jpg";
     Mat image = imread(filename, IMREAD_COLOR);
     const string winName = "image";
     namedWindow( winName, WINDOW_AUTOSIZE );
